@@ -486,8 +486,39 @@ ismapped(pagetable_t pagetable, uint64 va)
 }
 
 void
+vmprintwalk(pagetable_t pagetable,  int level, int depth, uint64 va) {
+  for(int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+
+    // Ignorar PTEs inválidas
+    if(pte & PTE_V) {
+      // Reconstruir o prefixo do endereço virtual associado à PTE atual
+      uint64 childva = va | ((uint64)i << PXSHIFT(level));
+
+      // Extrair o endereço físico apontado pela PTE
+      uint64 pa = PTE2PA(pte);
+
+      // Imprimir a indentação correta baseada na profundidade
+      for(int j = 0; j < depth; j++){
+        printf("..");
+        if(j < depth - 1){
+          printf(" ");
+        }
+      }
+      printf(" %d: va %p pte %p pa %p\n", i, (void*)childva, (void*)pte, (void*)pa);
+      if(level > 0 && (pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+        // Descer recursivamente usando pa como a próxima page table
+        vmprintwalk((pagetable_t) pa, level - 1, depth + 1, childva);
+      }
+    }
+  }
+
+}
+
+
+void
 vmprint(pagetable_t pagetable)
 {
   printf("page table %p\n", pagetable);
-  printf("TODO: implemente vmprint() em kernel/vm.c\n");
+  vmprintwalk(pagetable, 2, 1, 0);
 }
